@@ -1,0 +1,20 @@
+{
+    "name": "MPU6500",
+    "keywords": "i2c,wire,imu",
+    "description": "Arduino library for fake MPU-92500 not Nine-Axis (Gyro + Accelerometer + Compass missing) MEMS MotionTracking™ Device",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/paulosincos/MPU6500_aka-fake9250"
+    },
+    "authors":
+    {
+        "name": "Hideaki Tai",
+        "url": "https://github.com/paulosincos",
+        "maintainer": true
+    },
+    "version": "0.4.6",
+    "license": "MIT",
+    "frameworks": "arduino",
+    "platforms": "*"
+}
