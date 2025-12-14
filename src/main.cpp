@@ -107,6 +107,12 @@ typedef struct{
   uint16_t distance;
 }laser_ranging_sensor_t;
 
+typedef struct{
+  float ax, ay, az;  // accelerometer data (m/s^2)
+  float gx, gy, gz;  // gyroscope data (rad/s)
+  float roll, pitch, yaw;  // Euler angles from Madgwick filter
+}imu_t;
+
 
 
 // Struct to hold the state for a finite state machine
@@ -127,6 +133,8 @@ public:
   pid_controller_t position_pid_controller;
   odometry_t odometry;
   laser_ranging_sensor_t laser_ranging_sensor;
+  imu_t imu;
+  MPU6050 mpu;
 
   // tes - time entering state
   // tis - time in state
@@ -155,10 +163,10 @@ fsm::fsm(/* args */)
   pinMode(IR4_pin, INPUT);
   pinMode(IR5_pin, INPUT);
   // Motor encoders
-  pinMode(LEFT_MOTOR_ENCODER_A_pin, INPUT);
-  pinMode(LEFT_MOTOR_ENCODER_B_pin, INPUT);
-  pinMode(RIGHT_MOTOR_ENCODER_A_pin, INPUT);
-  pinMode(RIGHT_MOTOR_ENCODER_B_pin, INPUT);
+  pinMode(LEFT_MOTOR_ENCODER_A_pin, INPUT_PULLUP);
+  pinMode(LEFT_MOTOR_ENCODER_B_pin, INPUT_PULLUP);
+  pinMode(RIGHT_MOTOR_ENCODER_A_pin, INPUT_PULLUP);
+  pinMode(RIGHT_MOTOR_ENCODER_B_pin, INPUT_PULLUP);
   // Motor PWM outputs
   pinMode(LEFT_MOTOR_D0_pin, OUTPUT);
   pinMode(LEFT_MOTOR_D1_pin, OUTPUT);
@@ -169,6 +177,7 @@ fsm::fsm(/* args */)
   Wire1.begin();  // IMU
 
   laser_ranging_sensor.lox.begin();
+  mpu.initialize(Wire1);  // Initialize MPU6050 on I2C1
 }
 
 fsm::~fsm()
@@ -213,7 +222,19 @@ void fsm::readLaserRangingSensor(){
 }
 
 void fsm::readIMU(){
-
+  int16_t ax, ay, az, gx, gy, gz;
+  
+  mpu.getAcceleration(&ax, &ay, &az);
+  mpu.getRotation(&gx, &gy, &gz);
+  
+  // Convert to standard units (assuming ±2g for accel, ±250°/s for gyro)
+  imu.ax = ax / 16384.0f;  // 16384 LSB/g for ±2g range
+  imu.ay = ay / 16384.0f;
+  imu.az = az / 16384.0f;
+  
+  imu.gx = gx / 131.0f;    // 131 LSB/(°/s) for ±250°/s range, convert to rad/s
+  imu.gy = gy / 131.0f;
+  imu.gz = gz / 131.0f;
 }
 
 
@@ -228,21 +249,49 @@ void fsm::updateTisTes(){
   tis = cur_time - tes;
 }
 
-
+void fsm::calculateOdometry(){
+  // Calculate distances traveled by each wheel
+  // d1 = k * IMP1 (left wheel)
+  // d2 = k * IMP2 (right wheel)
+  odometry.d1 = CONVERSION_FACTOR_K * odometry.left_wheel_ticks;
+  odometry.d2 = CONVERSION_FACTOR_K * odometry.right_wheel_ticks;
+  
+  // Calculate average distance traveled
+  // d = (d1 + d2) / 2
+  odometry.d = (odometry.d1 + odometry.d2) / 2.0f;
+  
+  // Calculate change in heading angle (delta_theta)
+  // delta_theta = (d2 - d1) / WHEEL_DISTANCE__FACTOR_MM
+  float delta_theta = (odometry.d2 - odometry.d1) / WHEEL_DISTANCE__FACTOR_MM;
+  
+  // Update position using kinematic equations
+  // x = x + d*cos(theta + delta_theta/2)
+  // y = y + d*sin(theta + delta_theta/2)
+  // theta = theta + delta_theta
+  
+  float theta_mid = odometry.theta + delta_theta / 2.0f;
+  odometry.x = odometry.x + odometry.d * cosf(theta_mid);
+  odometry.y = odometry.y + odometry.d * sinf(theta_mid);
+  odometry.theta = odometry.theta + delta_theta;
+  
+  // Reset encoder ticks for next iteration
+  odometry.left_wheel_ticks = 0;
+  odometry.right_wheel_ticks = 0;
+}
 
 fsm fsmLineFollower;
 
 // meaningful names for the fsm1 states
 enum {
-
+  IDLE = 0,
+  CALIBRATION_IMU = 1,
+  LINE_FOLLOW = 2
 };
 
 
 uint32_t interval, last_cycle;
 uint32_t loop_micros;
 uint32_t blink_period;
-
-
 
 void setup() 
 {
@@ -273,37 +322,48 @@ void loop()
     if (now - last_cycle > interval) {
       loop_micros = micros();
       last_cycle = now;
-      
-      // Read the inputs
 
-      // FSM processing
+      // FSM processing - Calculate next state and perform actions
+      switch(fsmLineFollower.state) {
+        case IDLE:
+          // Actions
+          fsmLineFollower.motors.left_motor_speed = 0;
+          fsmLineFollower.motors.right_motor_speed = 0;
+          Serial.println("STATE: IDLE");
+          
+          // State transition
+          if (fsmLineFollower.tis > 100) {
+            fsmLineFollower.new_state = CALIBRATION_IMU;
+          }
+          break;
 
+        case CALIBRATION_IMU:
+          fsmLineFollower.readSensors();
+          fsmLineFollower.motors.left_motor_speed = 0;
+          fsmLineFollower.motors.right_motor_speed = 0;
+          if (fsmLineFollower.tis < 1000) {
+            Serial.println("STATE: CALIBRATION_IMU - Keep robot still");
+          }
+          
+          // State transition
+          if (fsmLineFollower.tis > 2000) {
+            fsmLineFollower.new_state = LINE_FOLLOW;
+          }
+          break;
 
-      // Update tis for all state machines
+        case LINE_FOLLOW:
+
+          fsmLineFollower.new_state = LINE_FOLLOW;
+          break;
+
+        default:
+          fsmLineFollower.new_state = IDLE;
+          break;
+      }
+
+      // Update tis and state
       fsmLineFollower.updateTisTes();
-
-
-      // Calculate next state for the first state machine
-
-
-
-      // Update the states
       fsmLineFollower.setState(fsmLineFollower.new_state);
-
-      // Actions to be performed according to the current state of the first state machine
-
-
-
-
-      // A more compact way, but taking more assumptions
-      // LED_1 = (fsm1.state == 1);
-      // LED_1 = (state == 1)||(state ==2);  if LED1 must be set in states 1 and 2
-      
-      // Actions set by the current state of the second state machine
-      // LED_2 = (fsm2.state == 0);
-
-      // Set the outputs
-     
 
 
       // Debug using the serial port
@@ -333,4 +393,3 @@ void loop()
     }
     
 }
-
