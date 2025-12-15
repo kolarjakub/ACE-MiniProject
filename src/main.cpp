@@ -45,8 +45,8 @@ void loop()
       loop_micros = micros();
       last_cycle = now;
 
-      fsmLineFollower.calculateOdometry();
       fsmLineFollower.readSensors();
+      fsmLineFollower.calculateOdometry();
 
       // FSM processing - Calculate next state and perform actions
       switch(fsmLineFollower.state) {

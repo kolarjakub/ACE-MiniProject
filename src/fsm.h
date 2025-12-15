@@ -17,13 +17,6 @@
 #define IR4_pin A2  //GPIO28
 #define IR5_pin 19
 
-// analog pins for the line sensors:
-#define IR1_pin 22
-#define IR2_pin A0  //GPIO26
-#define IR3_pin A1  //GPIO27
-#define IR4_pin A2  //GPIO28
-#define IR5_pin 19
-
 // Encdoder input pins for the motors:
 #define LEFT_MOTOR_ENCODER_A_pin 11
 #define LEFT_MOTOR_ENCODER_B_pin 10

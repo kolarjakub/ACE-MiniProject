@@ -107,6 +107,13 @@ void fsm::readEncoders() {
     odometry.left_wheel_ticks = l;
     odometry.right_wheel_ticks = r;
 
+    // Print encoder values
+    Serial.print("Encoder - Left: ");
+    Serial.print(odometry.left_wheel_ticks);
+    Serial.print(" ticks, Right: ");
+    Serial.print(odometry.right_wheel_ticks);
+    Serial.println(" ticks");
+
 }
 
 
@@ -127,6 +134,20 @@ void fsm::readLineSensors(){
   } else {
     line_sensors.central_distance = 0;
   }
+
+  // Print line sensor values with exact values
+  Serial.print("Line Sensors - IR1: ");
+  Serial.print(line_sensors.IR1);
+  Serial.print(", IR2: ");
+  Serial.print(line_sensors.IR2);
+  Serial.print(", IR3: ");
+  Serial.print(line_sensors.IR3);
+  Serial.print(", IR4: ");
+  Serial.print(line_sensors.IR4);
+  Serial.print(", IR5: ");
+  Serial.print(line_sensors.IR5);
+  Serial.print(", Central Distance: ");
+  Serial.println(line_sensors.central_distance, 6);
 }
 
 void fsm::readLaserRangingSensor(){
@@ -176,10 +197,12 @@ void fsm::readIMU(){
 
 
 void fsm::readSensors(){
+    Serial.println("\n=== Reading Sensors ===");
     this->readEncoders();
     this->readLineSensors();
     this->readLaserRangingSensor();
     this->readIMU();
+    Serial.println("=== End Sensor Read ===");
 }
 
 void fsm::updateTisTes(){
