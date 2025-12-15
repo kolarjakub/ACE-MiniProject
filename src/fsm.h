@@ -142,6 +142,7 @@ public:
 
   fsm();
   ~fsm();
+  void init();
   void setState(int new_state);
   void updateTisTes();
   void calibrateIMU();

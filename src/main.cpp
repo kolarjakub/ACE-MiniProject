@@ -6,22 +6,21 @@ uint32_t interval, last_cycle;
 uint32_t loop_micros;
 uint32_t blink_period;
 
-
 // Instantiate the global FSM instance
 fsm fsmLineFollower;
 
+
 void setup() 
 {
+  // Start the serial port with 115200 baudrate
+  Serial.begin(115200);
+  Serial.println("Robot on");
+
+  fsmLineFollower.init();
   fsmLineFollower.setState(0);
   fsmLineFollower.setVelocityReferences(0,0);
   fsmLineFollower.writeOutputs();
   fsmLineFollower.readSensors();
-
-
-
-
-  // Start the serial port with 115200 baudrate
-  Serial.begin(115200);
 
   blink_period = 1000 * 1.0/0.33; // In ms
 
@@ -42,6 +41,8 @@ void loop()
     // It helps to clear the switches bounce effect
     uint32_t now = millis();
     if (now - last_cycle > interval) {
+      Serial.println("Robot on");
+
       loop_micros = micros();
       last_cycle = now;
 
@@ -93,7 +94,9 @@ void loop()
       // Update tis and state
       fsmLineFollower.updateTisTes();
       fsmLineFollower.setState(fsmLineFollower.new_state);
+    
     }
+      
  
     Serial.print(" loop: ");
     Serial.print(micros() - loop_micros);

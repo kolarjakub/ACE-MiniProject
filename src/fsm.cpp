@@ -14,6 +14,14 @@ static void rightEncoderB_isr();
 // Constructor
 fsm::fsm()
 {
+
+}
+
+fsm::~fsm()
+{
+}
+
+void fsm::init(){
     this->setState(IDLE);
 
     // Initialize peripherals pins
@@ -61,9 +69,9 @@ fsm::fsm()
     setting.gyro_dlpf_cfg = GYRO_DLPF_CFG::DLPF_41HZ;
     setting.accel_fchoice = 0x01;
     setting.accel_dlpf_cfg = ACCEL_DLPF_CFG::DLPF_45HZ;
-    while(!mpu.setup(0x68, setting)) {
+    if(!mpu.setup(0x68, setting)) {
         Serial.println("MPU connection failed.");
-        while (1);
+        //while (1);
     }Serial.println("MPU initialized.");
 
     // Laser Ranging Sensor
@@ -74,13 +82,9 @@ fsm::fsm()
     Wire.begin();   // Ultrasound
     if (!laser_ranging_sensor.lox.begin()) {
         Serial.println("Failed to initialize VL53L0X! Check your wiring.");
-        while (1);
+        //while (1);
     }
     Serial.println("VL53L0X initialized.");
-}
-
-fsm::~fsm()
-{
 }
 
 void fsm::setState(int new_state){
